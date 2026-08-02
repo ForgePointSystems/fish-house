@@ -1,0 +1,38 @@
+# Real business data — never commit
+data/*
+!data/README.md
+!data/samples/
+data/samples/*
+!data/samples/.gitkeep
+
+# Env
+.env
+.env.local
+.env*.local
+*.key
+service-account*.json
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next
+.next/
+out/
+build/
+next-env.d.ts
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Vercel
+.vercel
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
