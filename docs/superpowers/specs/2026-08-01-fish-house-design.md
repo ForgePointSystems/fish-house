@@ -27,6 +27,17 @@ The owner's own framing, which sets the priority:
 The database is the foundation. The iPad app is the first thing built on it, not
 the thing itself.
 
+## Product intent
+
+This is built for one facility but intended to become a product sold to other
+processors. The first facility's owner is a **design partner and first
+customer**, not a co-owner: he brings domain expertise, a real workload to test
+against, and an industry network. The software is owned and maintained by us.
+
+This intent does not change what gets built in v1 — it is still one facility's
+workflow, built well. It changes only which corners must stay unpainted. See
+"Single tenant today, multi-tenant-shaped schema" below.
+
 ## Scope
 
 **In scope for v1**
@@ -84,13 +95,41 @@ later wants a Bluetooth scale pushing weights automatically rather than the crew
 typing them, that single feature would force a native wrapper. Camera-based
 barcode scanning works fine on iOS, so scanning is not affected.
 
-### A separate Supabase project, ideally owned by the business
+### A separate Supabase project, owned by us
 
-Not the `personal-automations` project, and ideally not a personal account at
-all. Experiments must not be able to break production inventory, the business's
-data should not sit inside a personal billing and backup scope, and if the
-facility ever hires someone technical, handing over an organization they already
-own is trivial where extracting their tables from someone else's project is not.
+Not the `personal-automations` project — experiments must not be able to break
+production inventory, and the two have nothing to do with each other.
+
+Owned by our GitHub org and our Supabase account, because the software is a
+product we intend to sell. The facility owns its *data*; we own the system that
+holds it. That distinction should be stated plainly to the design partner early,
+in writing, while it costs nothing to say.
+
+### Single tenant today, multi-tenant-shaped schema
+
+v1 serves one facility. No signup flow, no billing, no tenant admin UI, no
+per-tenant configuration screens — all of that is speculative and gets built
+when a second customer is real.
+
+But three things get done now because retrofitting them is brutal:
+
+1. **Every domain table carries a `facility_id`,** and RLS policies key on it
+   from the first migration. Adding a tenant discriminator to a populated schema
+   means backfilling every table, rewriting every query, and auditing every
+   policy — with live inventory data and someone's business depending on it.
+   Adding the column now costs one line per table.
+2. **Facility-specific vocabulary and rules live in data, not code.** Species
+   lists, product forms, lot numbering schemes, units, and label layouts are
+   rows, not constants and not `if` statements. Every processor names things
+   differently; the first one to differ should be a data entry problem, not a
+   refactor.
+3. **Auth is not bound to one Google Workspace domain.** Google sign-in is the
+   right default since this facility already lives in Workspace, but the domain
+   is configuration, not an assumption baked into the auth path.
+
+The Google Sheet mirror is likewise an **optional adapter**, not a core
+behavior. It exists because this facility's workflows hang off a sheet; the next
+customer may have no sheet at all.
 
 ### Inventory is an append-only ledger, not a quantity column
 
@@ -179,5 +218,10 @@ numbers are already tracked in the sheet.
 - Yield analysis and margin reporting — the ledger makes these possible later
   without schema changes
 - Formatted HACCP and recall reports
-- Multi-facility support
 - Replacing the Google Sheet mirror
+- Everything commercial: signup, billing, subscription management, tenant admin
+  UI, per-tenant configuration screens, onboarding. `facility_id` and RLS make
+  these possible later; none of them get built before a second customer exists.
+- Any claim that the system produces compliant HACCP or regulatory records.
+  Capturing traceability data is v1; asserting regulatory sufficiency is a legal
+  posture, not a feature, and must not be marketed until it has been reviewed.
