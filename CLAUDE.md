@@ -30,14 +30,13 @@ against restaurant orders, decrements inventory, and prints a label.
 - **Lot lineage is load-bearing.** Traceability is the reason this is a database
   and not a spreadsheet. Never denormalize in a way that breaks the parent/child
   chain from receipt to shipment.
-- **Every domain table carries `facility_id`, and RLS keys on it.** v1 serves one
-  facility, but this is intended to become a product. Adding a tenant
-  discriminator later means backfilling live inventory data and re-auditing every
-  policy. Adding it now is one line per table.
-- **Facility-specific vocabulary and rules are data, not code.** Species, product
-  forms, lot numbering schemes, units, and label layouts are rows — never
-  constants, never `if` statements. The next processor names everything
-  differently.
+- **This is bespoke software for one facility. Build it specific.** No
+  `facility_id`, no tenant discriminator, no configurability for hypothetical
+  future customers — a second client would get their own repo and their own
+  Supabase project. Generality here is pure cost. RLS is still used, for the
+  ordinary reason: crew vs. owner permissions.
+- **Use the crew's vocabulary in schema and UI** — see
+  `docs/reference/glossary.md`. Where their term and ours differ, theirs wins.
 - Use the crew's vocabulary in schema and UI — see `docs/reference/glossary.md`.
 
 ## Project Structure

@@ -27,16 +27,21 @@ The owner's own framing, which sets the priority:
 The database is the foundation. The iPad app is the first thing built on it, not
 the thing itself.
 
-## Product intent
+## Commercial intent
 
-This is built for one facility but intended to become a product sold to other
-processors. The first facility's owner is a **design partner and first
-customer**, not a co-owner: he brings domain expertise, a real workload to test
-against, and an industry network. The software is owned and maintained by us.
+This is bespoke software for one facility, and it stays that way. It is not a
+product, and it will not be sold to other processors.
 
-This intent does not change what gets built in v1 — it is still one facility's
-workflow, built well. It changes only which corners must stay unpainted. See
-"Single tenant today, multi-tenant-shaped schema" below.
+The longer-term goal is a **services business**: building tooling tailored to
+individual businesses, one repo and one deployment per client. This facility is
+the first engagement. What carries forward to the next client is the stack, the
+patterns, and the reputation — not this codebase.
+
+The practical consequence is that this design should be **specific**, not
+general. Model this facility's actual workflow. Do not hedge toward
+configurability for hypothetical future customers who do not exist; that hedging
+is pure cost in a per-client model, and it makes the software worse at the one
+job it has.
 
 ## Scope
 
@@ -95,41 +100,35 @@ later wants a Bluetooth scale pushing weights automatically rather than the crew
 typing them, that single feature would force a native wrapper. Camera-based
 barcode scanning works fine on iOS, so scanning is not affected.
 
-### A separate Supabase project, owned by us
+### A dedicated Supabase project for this client
 
 Not the `personal-automations` project — experiments must not be able to break
 production inventory, and the two have nothing to do with each other.
 
-Owned by our GitHub org and our Supabase account, because the software is a
-product we intend to sell. The facility owns its *data*; we own the system that
-holds it. That distinction should be stated plainly to the design partner early,
-in writing, while it costs nothing to say.
+One project per client, always. It is the cleanest possible blast radius: a
+mistake here cannot touch another client's data, because there is no shared
+database to make a mistake in. It also makes an eventual handoff or exit trivial
+— the client's entire system is one project and one repo.
 
-### Single tenant today, multi-tenant-shaped schema
+### Single tenant, and genuinely single tenant
 
-v1 serves one facility. No signup flow, no billing, no tenant admin UI, no
-per-tenant configuration screens — all of that is speculative and gets built
-when a second customer is real.
+**No `facility_id`, no tenant discriminator, no configurability for
+hypothetical customers.** This database serves one facility. A tenant column
+whose value is always the same is not insurance, it is a filter on every query
+and a lie about what the system is.
 
-But three things get done now because retrofitting them is brutal:
+If a second processor ever wants something similar, they get their own repo,
+their own Supabase project, and a design that fits *their* workflow — which is
+the entire premise of the services model. Nothing about this schema needs to
+anticipate them.
 
-1. **Every domain table carries a `facility_id`,** and RLS policies key on it
-   from the first migration. Adding a tenant discriminator to a populated schema
-   means backfilling every table, rewriting every query, and auditing every
-   policy — with live inventory data and someone's business depending on it.
-   Adding the column now costs one line per table.
-2. **Facility-specific vocabulary and rules live in data, not code.** Species
-   lists, product forms, lot numbering schemes, units, and label layouts are
-   rows, not constants and not `if` statements. Every processor names things
-   differently; the first one to differ should be a data entry problem, not a
-   refactor.
-3. **Auth is not bound to one Google Workspace domain.** Google sign-in is the
-   right default since this facility already lives in Workspace, but the domain
-   is configuration, not an assumption baked into the auth path.
+RLS is still used, for the ordinary reason: distinguishing what a processing
+crew member can see and do from what the owner can. That is a real requirement
+today, not a hedge.
 
-The Google Sheet mirror is likewise an **optional adapter**, not a core
-behavior. It exists because this facility's workflows hang off a sheet; the next
-customer may have no sheet at all.
+Where something is genuinely variable *within this facility* — the species they
+handle, their product forms, their storage locations — it is a table because
+that is correct schema design, not because a future customer might differ.
 
 ### Inventory is an append-only ledger, not a quantity column
 
@@ -219,9 +218,8 @@ numbers are already tracked in the sheet.
   without schema changes
 - Formatted HACCP and recall reports
 - Replacing the Google Sheet mirror
-- Everything commercial: signup, billing, subscription management, tenant admin
-  UI, per-tenant configuration screens, onboarding. `facility_id` and RLS make
-  these possible later; none of them get built before a second customer exists.
+- Multi-tenancy, signup, billing, tenant admin — permanently out of scope, not
+  deferred. A second client means a second repo.
 - Any claim that the system produces compliant HACCP or regulatory records.
   Capturing traceability data is v1; asserting regulatory sufficiency is a legal
-  posture, not a feature, and must not be marketed until it has been reviewed.
+  posture, not a feature, and must not be claimed until it has been reviewed.
