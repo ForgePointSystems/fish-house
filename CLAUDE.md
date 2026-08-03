@@ -37,6 +37,17 @@ against restaurant orders, decrements inventory, and prints a label.
   ordinary reason: crew vs. owner permissions.
 - **Use the crew's vocabulary in schema and UI** — see
   `docs/reference/glossary.md`. Where their term and ours differ, theirs wins.
+- **Sheet sync is one-way, always.** Database to sheet, into a dedicated
+  `FROM_APP` tab no human edits. Never write to their working tabs, never read
+  the mirror back. Bidirectional sync is rejected, not deferred — spreadsheet
+  rows have no stable identity and conflicts have no correct resolution. See the
+  rollout section of the spec.
+- **Rollback must always be "go back to the sheet."** That only works if the
+  sheet stays current, which is why the mirror exists. It is an escape hatch, not
+  a convenience.
+- **Ledger rows carry a source** (app-entered, sheet-imported, count-adjustment)
+  from the first migration, so the mirror and divergence report can tell them
+  apart.
 - Use the crew's vocabulary in schema and UI — see `docs/reference/glossary.md`.
 
 ## Project Structure

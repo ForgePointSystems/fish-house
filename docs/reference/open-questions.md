@@ -59,7 +59,31 @@ before anything is provisioned, because moving it later is painful.
 
 **Answer:**
 
-### 7. Units and precision
+### 7. Do they do periodic physical inventory counts, and how often?
+
+The rollout plan attaches cutover and resync to their existing count rather than
+inventing a reconciliation ritual. If they don't count on any regular schedule,
+that assumption breaks and phase 3 needs a different trigger.
+
+**Answer:**
+
+### 8. What is the natural first slice?
+
+Phase 2 needs a boundary that is physically obvious to the crew — one species,
+one freezer, one shift. Ideally something high enough volume to exercise the app
+properly but low enough stakes that two weeks of dual entry is tolerable.
+
+**Answer:**
+
+### 9. Who on the crew would be the first user, and are they willing?
+
+Dual entry is real extra work for a real person. The rollout depends on one
+person being bought in rather than resentful. Worth knowing who that is before
+promising a timeline.
+
+**Answer:**
+
+### 10. Units and precision
 
 Pounds to one decimal? Whole pounds? Do they ever work in kilos or count
 (pieces, cases)? Rounding rules on partial pulls.

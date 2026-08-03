@@ -203,6 +203,86 @@ data into than the sheet, on a tablet, with cold wet hands, possibly on bad wifi
 near a freezer. That is a client-side offline-queue problem, and it is where
 projects like this usually die.
 
+## Rollout and migration
+
+**Status: sketch.** The shape is settled; the specifics need fleshing out once
+we have the sheet and know how the facility actually works.
+
+### Sync is one-way. Bidirectional sync is not an option.
+
+Not "deferred" — rejected. Two-way sync between the sheet and the database
+cannot be made correct:
+
+- **Spreadsheet rows have no stable identity.** There is no primary key. Rows
+  are sorted, inserted, dragged, and cleared, so a row is identified only by
+  position or by a fuzzy composite of its values. Any matching logic will
+  eventually pair the wrong rows and corrupt inventory silently.
+- **Conflicts have no correct resolution.** If a cell is edited to `380` while
+  the app records a 70 lb pull, last-write-wins destroys one of them, and nobody
+  learns about it until a count fails to reconcile. A spreadsheet edit carries no
+  intent, so "corrected a typo" and "recorded a real movement" are
+  indistinguishable.
+- **It loops.** Database writes to the sheet, a sheet trigger fires, it writes
+  back to the database.
+
+### Authority is partitioned by scope, not by time
+
+The way to avoid sync conflicts entirely is to give every piece of data exactly
+one home at any moment. Rather than both systems holding everything and
+reconciling, the business is split into slices and moved one slice at a time.
+
+The slice must have a boundary that is **physically real to the crew** — one
+species, one freezer, one shift — so nobody has to remember a rule about where
+something lives.
+
+### Phases
+
+1. **Read-only shadow.** Database seeded from a snapshot. The app displays
+   inventory but is authoritative for nothing. The purpose is finding out where
+   our model of a lot disagrees with theirs, cheaply.
+2. **Dual entry on one slice.** Pulls of the chosen slice are entered in both
+   systems for roughly two weeks. Nothing syncs. **The sheet remains the system
+   of record** — when they disagree, the sheet wins and the app gets fixed. The
+   double entry is the cost of the highest-confidence validation available, which
+   is why the slice is narrow and the window is short.
+3. **Flip authority for that slice.** The database becomes truth for the slice. A
+   scheduled job writes derived state one-way into a dedicated `FROM_APP` tab
+   that no human edits. Existing reports keep working; the app never reads that
+   tab back.
+4. **Widen slice by slice** until nothing is left outside the app, then freeze
+   the sheet as an archive.
+
+### The divergence report
+
+A nightly job pulls the sheet, diffs it against the database, and sends a short
+summary of what disagrees.
+
+This is the highest-value thing built during the trial. It converts "I hope this
+is working" into evidence, it catches problems while the sheet is still there to
+fall back on, and it is the artifact that earns the owner's go-ahead for the
+next phase.
+
+### Cutover attaches to their physical count
+
+The facility already counts inventory periodically. That is the natural resync
+point: after a count, both systems are set to observed truth and divergence
+resets to zero. Do not invent a reconciliation ritual — attach to the existing
+one.
+
+### The rollback rule
+
+**At every phase, the answer to "the app is broken" must be "go back to the
+sheet," and that only works if the sheet is still current.**
+
+The one-way mirror in phase 3 exists for this reason. It is not a convenience
+feature, it is the escape hatch.
+
+### Schema consequence
+
+Ledger rows carry a **source** — app-entered, sheet-imported, count-adjustment —
+so the mirror and the divergence report can distinguish what the app knows from
+what was brought in from outside. Needed from the first migration.
+
 ## Open questions
 
 Tracked in `docs/reference/open-questions.md`. The blocking ones are the label
