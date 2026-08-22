@@ -43,6 +43,28 @@ configurability for hypothetical future customers who do not exist; that hedging
 is pure cost in a per-client model, and it makes the software worse at the one
 job it has.
 
+## Scope reassessment (2026-08-11)
+
+The first real documents arrived and were read — see
+`docs/reference/sheet-findings.md`. They confirm this is a **multi-channel
+wholesale seafood distributor**, not a single-channel processing operation:
+wholesale restaurant accounts (~150+, the largest single piece), retail chain
+accounts with formal POs, a CSA-style subscription program, farmers markets,
+out-of-state shipping, and a satellite Asheville/WNC operation, across finfish,
+live shellfish, and dry goods.
+
+**Nothing below in this document is invalidated by that** — the architecture
+decisions (append-only ledger, bespoke build, one-way sync, no AI in the core
+loop, narrow-slice rollout) all still hold, and arguably matter more now. What
+changes is that **v1's boundary must be a deliberate choice, not the implicit
+one this document originally made** ("processing team pulls fish for a
+restaurant order" quietly assumed one channel, one product category, one
+location). See open questions 11–13 for the specific choices pending.
+
+The scope section below should be read as **pre-reassessment** — a reasonable
+first cut, now due for a revisit once the channel/category/location boundary is
+picked.
+
 ## Scope
 
 **In scope for v1**

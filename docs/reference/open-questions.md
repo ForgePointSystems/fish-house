@@ -3,6 +3,14 @@
 Answers go inline under each question, dated. When one is settled and affects
 the design, update the spec and note it here as resolved.
 
+**2026-08-11 — first real documents received.** `data/samples/inventory-2026-08-03.xlsx`
+(8-tab inventory workbook) and `data/samples/order-dispatch-doc-2026-08-03.docx`
+(weekly order/dispatch log) answered questions 2, 3, and 7 below, and revealed
+the business is considerably larger and more multi-channel than the original
+framing assumed — see `docs/reference/sheet-findings.md` for the full read and
+the spec's "Scope reassessment" section for the consequence. **v1 scope needs a
+new conversation before more design work happens.**
+
 ## Blocking — schema cannot be finalized without these
 
 ### 1. The label printer: make, model, and how is it connected?
@@ -14,25 +22,84 @@ off someone's laptop is a different and more annoying conversation.
 Also needed: what produces labels today, and what does a current label look
 like? A photo of one is worth more than a description.
 
-**Answer:**
+**Answer:** Not in either document. Still needs to be asked directly.
 
 ### 2. Where do orders live today?
 
-"What order it was for" implies a list the crew picks from. Another sheet? An
-email inbox? A POS? Verbal?
+**Answer (2026-08-11):** Nowhere structured — there is no order database or
+form today. Orders live inside a single running Word document per week
+(`order-dispatch-doc-2026-08-03.docx`), organized by delivery day, then by
+route/driver, then by restaurant, as hand-typed free text: `RESTAURANT NAME
+INVOICE# inv: <quantities and species codes>`. The same document also carries
+delivery addresses, standing-order notes, driver assignments, and nightly
+physical counts. It is simultaneously the order log, the dispatch sheet, and
+the count log — not a clean list a UI could pick from.
 
-If orders are not structured anywhere, v1 has to either create an order-entry
-screen or let the crew type a restaurant name free-form — a real scope fork.
-
-**Answer:**
+This changes the shape of "order entry" for v1: there is no existing
+structured order to link a pull to. Either the app becomes where orders get
+entered in the first place, or v1 pulls are linked to a free-text
+customer/invoice reference rather than a real order record. See scope
+reassessment.
 
 ### 3. Are lot numbers already tracked in the sheet?
 
-If yes, lots can be seeded from the existing data and receiving capture is less
-urgent. If no, an intake screen is unavoidable before labels can carry a lot
-number.
+**Answer (2026-08-11):** Yes, extensively, in two different places:
 
-What is the lot numbering scheme, and who assigns it?
+- The `Inventory` tab has an explicit **Histamine Lot Code** column, format
+  `{SOURCE}-{SPECIES}-{MMDDYY}` (e.g. `PDL-ALM-080326` = Peddler dock, Almaco
+  jack, 08/03/26).
+- Nearly every line in the order/dispatch doc carries an inline lot or harvest
+  reference, e.g. `(ON-BET-073026)` for finfish or `H5 8/1` for shellfish (a
+  harvest-area code plus date — this format matches NC's molluscan shellfish
+  tagging requirement, i.e. this is already regulatory traceability data, not
+  just internal bookkeeping).
+
+Lot numbers are not something v1 needs to invent — they need to be **parsed
+and centralized** from formats already in daily use. See
+`docs/reference/sheet-findings.md`.
+
+**Still open:** who assigns these codes and at what point (at landing? at
+purchase?), and whether the two formats (finfish vs. shellfish) are used
+consistently enough to parse automatically or need a human step.
+
+## New, raised by reading the actual documents — blocking, scope-level
+
+### 11. Which sales channel is v1 for?
+
+The business is not "a processing room fulfilling restaurant orders." The
+order/dispatch doc shows at minimum: wholesale restaurant accounts (100+,
+the bulk of the doc), retail chain accounts with formal POs (Whole Foods
+Market, multiple stores), a CSA-style "shares" subscription program, farmers
+markets, out-of-state shipping (FedEx/UPS, including to Key West FL), and a
+satellite Asheville/WNC operation with its own van route. Each has different
+data (a PO number vs. an invoice number vs. a share count vs. nothing at all).
+
+**v1 must pick one channel**, almost certainly wholesale restaurant delivery —
+it's the largest and most repetitive section of the doc, and closest to the
+original "pull for an order" framing. Everything else stays on the sheet/doc
+indefinitely, not just for the trial period.
+
+**Answer:**
+
+### 12. Does the product line include shellfish and live product, or finfish only?
+
+The workbook and doc cover whole/fillet finfish, live oysters, clams, live
+crabs, live crawfish, and dry goods, each with distinct units (pounds,
+count/dozen, gallons for shucked oysters) and distinct handling. Finfish pulls
+and oyster/clam pulls are not the same transaction shape.
+
+**Recommendation, not yet confirmed with the owner:** finfish only for v1. It's
+the ledger-and-weight model the design already assumes; shellfish introduces
+count-based units and a different traceability tag format that would roughly
+double the modeling work for no v1 benefit.
+
+**Answer:**
+
+### 13. Is there a second location (Wanchese) or just a satellite route (Asheville)?
+
+`Wanchese Frozen Inv` is a separate tab in the workbook, suggesting a
+second physical inventory location, not just a delivery route. If pulls can
+happen from either location, "on hand" is location-scoped, not facility-wide.
 
 **Answer:**
 
@@ -61,11 +128,14 @@ before anything is provisioned, because moving it later is painful.
 
 ### 7. Do they do periodic physical inventory counts, and how often?
 
-The rollout plan attaches cutover and resync to their existing count rather than
-inventing a reconciliation ritual. If they don't count on any regular schedule,
-that assumption breaks and phase 3 needs a different trigger.
-
-**Answer:**
+**Answer (2026-08-11):** Yes — at minimum a nightly "EOD" (end of day) count,
+typed as a flat species-and-quantity list at the bottom of each day's section
+in the order/dispatch doc (e.g. "93 mbl 8/6-ON", "245 LSH"). Seen for multiple
+weekdays in the sample, so this looks like a daily habit, not occasional. This
+is exactly the reconciliation point the rollout plan wants — confirms the
+approach, no design change needed. Still worth confirming verbally that EOD
+counts happen every day without exception, and whether Saturday/Sunday follow
+the same pattern (the doc's retail/farmers-market days look less structured).
 
 ### 8. What is the natural first slice?
 
