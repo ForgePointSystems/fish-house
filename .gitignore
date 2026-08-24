@@ -36,3 +36,6 @@ supabase/.temp/
 Thumbs.db
 *.swp
 .idea/
+
+# Local worktrees
+.worktrees/
