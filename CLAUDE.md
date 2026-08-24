@@ -2,15 +2,21 @@
 
 ## What this project does
 Inventory and lot traceability for a small fish processing facility, replacing a
-hand-maintained Google Sheet. Tablet app in the processing room records pulls
-against restaurant orders, decrements inventory, and prints a label.
+hand-maintained Google Sheet.
+
+**v1 (current):** a real inventory ledger, an importer from the facility's
+existing spreadsheet, and a UI to view on-hand stock and record receiving and
+adjustments. No orders, no pulls-against-orders, no label printing yet — those
+are designed and deferred, not forgotten. See
+`docs/superpowers/specs/2026-08-01-fish-house-design.md` ("Scope reassessment")
+for why.
 
 ## Stack
-- Next.js (App Router) on Vercel — PWA, iPad-first
+- Next.js (App Router) on Vercel — PWA, mobile-friendly
 - Supabase (Postgres + Auth + Storage + Edge Functions)
 - TypeScript
 - Tailwind CSS
-- Print agent: small on-site service, runtime TBD
+- Print agent: deferred to a later phase, not part of v1
 
 ## Handling real data
 - **Never connect to the live Google Sheet.** Snapshots only — see README.
@@ -71,6 +77,8 @@ against restaurant orders, decrements inventory, and prints a label.
 Nothing scaffolded yet. Fill in as the stack lands.
 
 ## Current State
-Design phase. Architecture agreed in principle; blocked on
-`docs/reference/open-questions.md` — the label printer, where orders live, and
-whether lot numbers already exist in the sheet.
+Design phase, moving into implementation. v1 scope is inventory only (see
+above). Blocking questions for the schema are now just open questions 12
+(finfish-only vs. shellfish) and 13 (is Wanchese a second location) in
+`docs/reference/open-questions.md` — the label printer and sales channel
+questions no longer block anything since orders are deferred.
