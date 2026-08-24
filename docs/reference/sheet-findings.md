@@ -82,6 +82,46 @@ Confirmed structural elements:
   sample — this is the physical-count ritual the rollout plan's phase 3
   cutover is designed to attach to.
 
+## Manual entry vs. formula-computed cells (2026-08-24)
+
+Checked directly by counting `<f>` (formula) elements in the workbook XML,
+rather than inferring from appearance.
+
+| Tab | Formula cells | Share |
+|---|---|---|
+| `Inventory` | 5,343 / 27,775 | ~19% |
+| `FF LOG` | 2,037 / 7,201 | ~28% |
+| `Frozen Fillets LS - 2026 new` | 144 / 1,241 | ~12% |
+| `BULK FRZN SMOKE` | 118 / 1,189 | ~10% |
+| `Wanchese Frozen Inv` | 125 / 708 | ~18% |
+| `OYP` | 135 / 3,007 | ~4% |
+| `OY PLAN` | 8 / 3,194 | <1% |
+| `Fish Qty` | 0 / 3,216 | 0% |
+
+**Species codes, lot codes, dock names, treatments, prices, and dates are
+hand-typed** — no data validation anywhere, which is what produces the ragged
+rows and inconsistent blanks. But real formula infrastructure sits on top:
+yield percentages, running sums, cost-per-package, and potential revenue by
+channel are computed, not typed. `Inventory` and `FF LOG` carry the heaviest
+formula load.
+
+**Tabs are not independent — at least one cross-tab reference exists:** `OYP`
+pulls directly from `Inventory` (`Inventory!B475/100`). Any migration or
+mirror needs to account for this before assuming a tab can be moved or dropped
+in isolation.
+
+**`Fish Qty` is 0% formula despite reading like a pivot summary.** It's either
+a pivot table that was "paste special → values"'d at some point, or something
+retyped periodically by hand. Either way it's a **frozen snapshot, not a live
+view** — a real staleness risk in the current system, and worth naming to the
+owner as an example of exactly the kind of bug the new system is meant to
+remove.
+
+**Consequence for the importer:** it cannot be "export values, load into
+Postgres." It has to distinguish source-of-truth facts (species, lot code,
+weight, price) from derived values (yields, potentials) and recompute the
+latter rather than copy a formula's cached, possibly-stale output.
+
 ## What this means for scope
 
 The original design was framed around "processing team pulls fish for a
