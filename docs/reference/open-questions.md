@@ -7,22 +7,69 @@ the design, update the spec and note it here as resolved.
 (8-tab inventory workbook) and `data/samples/order-dispatch-doc-2026-08-03.docx`
 (weekly order/dispatch log) answered questions 2, 3, and 7 below, and revealed
 the business is considerably larger and more multi-channel than the original
-framing assumed — see `docs/reference/sheet-findings.md` for the full read and
-the spec's "Scope reassessment" section for the consequence. **v1 scope needs a
-new conversation before more design work happens.**
+framing assumed — see `docs/reference/sheet-findings.md` for the full read.
+
+**2026-08-24 — v1 narrowed to inventory only.** Order entry, pulls, and label
+printing are deferred to a later phase rather than scoped now — see the spec's
+"Scope reassessment" section. That resolved question 11 by making it moot for
+v1 and demoted question 1 the same way; both move to "not blocking v1" below.
+**Questions 12 and 13 are now the only things blocking schema work.**
 
 ## Blocking — schema cannot be finalized without these
 
+### 12. Does v1's inventory cover finfish only, or shellfish and live product too?
+
+The workbook and doc cover whole/fillet finfish, live oysters, clams, live
+crabs, live crawfish, and dry goods, each with distinct units (pounds,
+count/dozen, gallons for shucked oysters) and distinct handling.
+
+**Recommendation, not yet confirmed with the owner:** finfish only for v1. It's
+the weight-based ledger model already designed; shellfish introduces
+count-based units and a different traceability tag format that would roughly
+double the modeling work for no v1 benefit, since orders (where the channel
+mix actually matters) aren't in scope yet either.
+
+**Answer:**
+
+### 13. Is there a second location (Wanchese) or just a satellite route (Asheville)?
+
+`Wanchese Frozen Inv` is a separate tab in the workbook, suggesting a second
+physical inventory location, not just a delivery route. If lots can be
+received at or held at either location, "on hand" is location-scoped, not
+facility-wide, and the schema needs a location dimension from the start.
+
+**Answer:**
+
+## Not blocking v1 — needed when the order/pull/label phase starts
+
 ### 1. The label printer: make, model, and how is it connected?
 
-Determines the entire print path. A network Zebra speaking ZPL is close to
-trivial — the agent opens a socket on port 9100 and writes. A USB Dymo hanging
-off someone's laptop is a different and more annoying conversation.
+Deferred along with the rest of the order/pull/label workflow — see the spec's
+"Scope reassessment." Determines the entire print path when that phase
+starts: a network Zebra speaking ZPL is close to trivial, a USB Dymo hanging
+off someone's laptop is a different and more annoying conversation. Also
+needed then: a photo of a current label.
 
-Also needed: what produces labels today, and what does a current label look
-like? A photo of one is worth more than a description.
+**Answer:** Not in either document. Ask directly when this phase starts.
 
-**Answer:** Not in either document. Still needs to be asked directly.
+### 11. Which sales channel does the order workflow target?
+
+The business is not "a processing room fulfilling restaurant orders." The
+order/dispatch doc shows at minimum: wholesale restaurant accounts (100+,
+the bulk of the doc), retail chain accounts with formal POs (Whole Foods
+Market, multiple stores), a CSA-style "shares" subscription program, farmers
+markets, out-of-state shipping (FedEx/UPS, including to Key West FL), and a
+satellite Asheville/WNC operation with its own van route.
+
+No longer blocks anything — v1 doesn't touch orders. Answer this when that
+phase starts. Current thinking, worth revisiting then: wholesale restaurant
+delivery, piloted on a single route rather than a single species, since the
+order/dispatch doc is already organized by route and each route reads like
+one person's workflow — see the spec's rollout section.
+
+**Answer:**
+
+## Answered
 
 ### 2. Where do orders live today?
 
@@ -62,47 +109,6 @@ and centralized** from formats already in daily use. See
 purchase?), and whether the two formats (finfish vs. shellfish) are used
 consistently enough to parse automatically or need a human step.
 
-## New, raised by reading the actual documents — blocking, scope-level
-
-### 11. Which sales channel is v1 for?
-
-The business is not "a processing room fulfilling restaurant orders." The
-order/dispatch doc shows at minimum: wholesale restaurant accounts (100+,
-the bulk of the doc), retail chain accounts with formal POs (Whole Foods
-Market, multiple stores), a CSA-style "shares" subscription program, farmers
-markets, out-of-state shipping (FedEx/UPS, including to Key West FL), and a
-satellite Asheville/WNC operation with its own van route. Each has different
-data (a PO number vs. an invoice number vs. a share count vs. nothing at all).
-
-**v1 must pick one channel**, almost certainly wholesale restaurant delivery —
-it's the largest and most repetitive section of the doc, and closest to the
-original "pull for an order" framing. Everything else stays on the sheet/doc
-indefinitely, not just for the trial period.
-
-**Answer:**
-
-### 12. Does the product line include shellfish and live product, or finfish only?
-
-The workbook and doc cover whole/fillet finfish, live oysters, clams, live
-crabs, live crawfish, and dry goods, each with distinct units (pounds,
-count/dozen, gallons for shucked oysters) and distinct handling. Finfish pulls
-and oyster/clam pulls are not the same transaction shape.
-
-**Recommendation, not yet confirmed with the owner:** finfish only for v1. It's
-the ledger-and-weight model the design already assumes; shellfish introduces
-count-based units and a different traceability tag format that would roughly
-double the modeling work for no v1 benefit.
-
-**Answer:**
-
-### 13. Is there a second location (Wanchese) or just a satellite route (Asheville)?
-
-`Wanchese Frozen Inv` is a separate tab in the workbook, suggesting a
-second physical inventory location, not just a delivery route. If pulls can
-happen from either location, "on hand" is location-scoped, not facility-wide.
-
-**Answer:**
-
 ## Important — shape the UX, not the schema
 
 ### 4. How many people, and how does data get entered today?
@@ -121,10 +127,11 @@ Decides whether the offline queue is a v1 requirement or a genuine deferral.
 
 ### 6. Who owns the Supabase and Vercel accounts?
 
-Recommendation is the business, with us as members. Needs an actual decision
-before anything is provisioned, because moving it later is painful.
-
-**Answer:**
+**Answer (2026-08-24, resolved):** ForgePoint Systems — this is bespoke
+software built for a client, not a joint venture. See the spec's "Commercial
+intent" section. The GitHub org (`ForgePointSystems`) already exists; Supabase
+and Vercel projects for this repo haven't been provisioned yet and should be
+created under that org when work on the inventory schema starts.
 
 ### 7. Do they do periodic physical inventory counts, and how often?
 
@@ -137,11 +144,13 @@ approach, no design change needed. Still worth confirming verbally that EOD
 counts happen every day without exception, and whether Saturday/Sunday follow
 the same pattern (the doc's retail/farmers-market days look less structured).
 
-### 8. What is the natural first slice?
+### 8. What is the natural first slice, for the phase-2 dual-entry trial?
 
-Phase 2 needs a boundary that is physically obvious to the crew — one species,
-one freezer, one shift. Ideally something high enough volume to exercise the app
-properly but low enough stakes that two weeks of dual entry is tolerable.
+With v1 scoped to inventory only, this is now a **species or product
+category** boundary, not a route (route-based slicing is the plan for the
+later order/pull/label phase — see question 11). Needs something physically
+obvious to the crew, high-volume enough to exercise the app properly, low-
+stakes enough that two weeks of dual entry is tolerable.
 
 **Answer:**
 

@@ -1,17 +1,23 @@
 # Fish House — Design
 
 **Date:** 2026-08-01
-**Status:** Draft. Architecture agreed in principle. Blocked on the open
-questions in `docs/reference/open-questions.md` before a schema can be written.
+**Status:** Draft. Architecture agreed in principle. **v1 narrowed to inventory
+digitization on 2026-08-24** — see "Scope" below. Order entry, pulls-against-
+orders, and label printing are real and still wanted, but deferred to a later
+phase rather than designed now. Blocked on the open questions in
+`docs/reference/open-questions.md`, most of which now concern only the
+inventory slice.
 
 ## Purpose
 
 Replace a fragile Google Sheet with a real database for a small fish processing
-facility, and put a tablet app in the processing room on top of it.
+facility.
 
-The first user-facing loop: the processing team pulls fish for a restaurant
-order, records the weight pulled, inventory decrements, and a label prints
-identifying which order the fish is for.
+**v1's user-facing loop:** see current on-hand inventory on a screen instead of
+a spreadsheet, log fish in as a lot when it's received, and record it leaving
+inventory as an adjustment. No order linkage, no pull-specific workflow, no
+label printing yet — those come once the inventory core is trusted. See
+"Scope" below for why, and the deferred original loop for what's next.
 
 ## Context
 
@@ -43,40 +49,54 @@ configurability for hypothetical future customers who do not exist; that hedging
 is pure cost in a per-client model, and it makes the software worse at the one
 job it has.
 
-## Scope reassessment (2026-08-11)
+## Scope reassessment (2026-08-11), resolved 2026-08-24
 
 The first real documents arrived and were read — see
-`docs/reference/sheet-findings.md`. They confirm this is a **multi-channel
+`docs/reference/sheet-findings.md`. They confirmed this is a **multi-channel
 wholesale seafood distributor**, not a single-channel processing operation:
 wholesale restaurant accounts (~150+, the largest single piece), retail chain
 accounts with formal POs, a CSA-style subscription program, farmers markets,
 out-of-state shipping, and a satellite Asheville/WNC operation, across finfish,
 live shellfish, and dry goods.
 
-**Nothing below in this document is invalidated by that** — the architecture
-decisions (append-only ledger, bespoke build, one-way sync, no AI in the core
-loop, narrow-slice rollout) all still hold, and arguably matter more now. What
-changes is that **v1's boundary must be a deliberate choice, not the implicit
-one this document originally made** ("processing team pulls fish for a
-restaurant order" quietly assumed one channel, one product category, one
-location). See open questions 11–13 for the specific choices pending.
+The original scope ("processing team pulls fish for a restaurant order")
+quietly assumed one channel, one product category, one location — none of
+which are true. Rather than pick a channel/category/location boundary for the
+*order* workflow, the resolution was to **not build the order workflow yet at
+all**. v1 became inventory only: a real ledger, an importer, and a UI to see
+and adjust it. That sidesteps the channel question entirely (open question 11)
+and defers the shellfish-vs-finfish question (12) to just the inventory model,
+where it's a much smaller decision than it would be for order fulfillment.
 
-The scope section below should be read as **pre-reassessment** — a reasonable
-first cut, now due for a revisit once the channel/category/location boundary is
-picked.
+The architecture decisions below (append-only ledger, bespoke build, one-way
+sync, no AI in the core loop, narrow-slice rollout) are all unaffected — if
+anything they matter more now, since inventory-first is itself an application
+of "narrow slice" thinking to the whole project, not just the rollout.
 
 ## Scope
 
 **In scope for v1**
 
 - Lot-level inventory as an append-only transaction ledger
-- Receiving — incoming fish logged as lots with a lot number
-- Pull — record weight pulled against an order, decrement on hand
-- Label printing triggered by a pull: restaurant, date, species, lot number
+- Receiving — incoming fish logged as lots with a lot number, parsed lot code
+  fields, source/dock, and pickup date
+- Adjustment — record product leaving inventory (sold, used, spoiled,
+  correction) as a ledger entry, **not yet linked to a structured order**
+- A UI: live on-hand by species (replaces the stale `Fish Qty` pivot),
+  receiving screen, adjustment screen
+- An importer for the `Inventory` tab, separating hand-typed facts from
+  formula-derived columns (see `docs/reference/sheet-findings.md`) — this
+  doubles as the phase-1 seed loader and the foundation of the eventual
+  divergence checker
 - One-way mirror of current on-hand back into a Google Sheet
 
-**Out of scope for v1**
+**Out of scope for v1 — deferred, not abandoned**
 
+- **Order entry, pulls-against-orders, and label printing.** This was the
+  original first loop. It's still the goal — just sequenced after inventory is
+  real and trusted, so it gets designed against actual data instead of
+  guesses. Needs open questions 11 (channel) and 1 (printer) answered when it
+  comes up; neither blocks v1 anymore.
 - Purchasing, invoicing, accounting, payroll
 - Anything customer-facing
 - Formatted HACCP or regulatory reports. Traceability *data* is captured from
@@ -85,28 +105,48 @@ picked.
 
 ## Architecture
 
+**v1:**
+
 ```
-[iPad — PWA, processing room]
-   receive lot / pull for order
+[PWA — tablet or desktop browser]
+   view on-hand / receive lot / adjust
              │  HTTPS
              ▼
     [Supabase — Postgres]
       inventory_transaction (append-only)
-      lots, orders, species
+      lots, species
       current_on_hand (view)
-      print_jobs
-             │                    │
-             │ Realtime/poll      │ scheduled
-             ▼                    ▼
-   [print agent — on-site]   [Google Sheet mirror]
-      raw label commands         current on-hand,
-             │                   read-only
+             │
+             │ scheduled
              ▼
-      [label printer]
+   [Google Sheet mirror]
+      current on-hand, read-only
 ```
 
-Three deployables, one repo: the web app (Vercel), the database and edge
-functions (Supabase), and a small always-on print agent inside the building.
+Two deployables, one repo: the web app (Vercel) and the database (Supabase).
+No print agent, no `print_jobs`, no `orders` table yet — see "Deferred" below.
+
+**Future phase, once orders are tackled** (not designed yet, kept here so the
+v1 schema doesn't accidentally close off the path):
+
+```
+             ┌──────────────────────┐
+             │  orders, print_jobs   │
+             │  added to the schema  │
+             └──────────┬────────────┘
+                         │ Realtime/poll
+                         ▼
+              [print agent — on-site]
+                 raw label commands
+                         │
+                         ▼
+                 [label printer]
+```
+
+A pull would write a row to `print_jobs`; an always-on on-site machine (an
+existing PC or a Raspberry Pi) watches it and drives the printer directly, so
+the tablet never talks to the printer. That reasoning doesn't change — it's
+just not being built yet.
 
 ## Key decisions
 
@@ -175,7 +215,7 @@ week for the app is not a bad week for the business.
 The mirror is one-way and read-only by convention. Once the app is trusted, the
 mirror can be dropped.
 
-### Printing goes through a local agent, not the iPad
+### Printing goes through a local agent, not the iPad *(deferred with the rest of the order/pull/label workflow — decision kept for when it's built)*
 
 A pull writes a row to `print_jobs`. An always-on machine in the building — an
 existing PC or a Raspberry Pi — watches that table and pushes raw label commands
@@ -205,7 +245,7 @@ An app that halts the processing line because its own numbers were stale gets
 abandoned within a week, and the spreadsheet comes back. Negative on-hand is a
 signal to reconcile, not an error state to enforce.
 
-### Oldest lot first, with override
+### Oldest lot first, with override *(deferred with the rest of the order/pull/label workflow — decision kept for when it's built)*
 
 When several lots of one species are on hand, a pull draws from the oldest by
 default so the common case is a single tap, with a manual override for when the
@@ -214,10 +254,13 @@ label, so this cannot be left implicit.
 
 ## Consequences worth naming
 
-**Lot numbers on labels mean receiving must be captured.** The app cannot print
-a lot number it was never told. An intake screen is therefore in v1 scope even
-though the owner's description started at the pull step — unless lot numbers
-already exist in the current sheet and can be seeded from it.
+**Receiving is in v1 scope regardless of pulls or labels.** The original
+reasoning was "labels need a lot number, so intake must be captured" — that
+reasoning no longer applies directly, since labels are deferred. But receiving
+is in scope anyway: without it there's nothing to seed the ledger with beyond
+the one-time import, and no way to add new lots as fish actually arrives. It
+was always going to be needed; it just doesn't need justifying by labels
+anymore.
 
 **The floor is the real risk, not the database.** The sheet survives because it
 is forgiving and already known. Whatever replaces it has to be faster to enter
@@ -256,6 +299,17 @@ reconciling, the business is split into slices and moved one slice at a time.
 The slice must have a boundary that is **physically real to the crew** — one
 species, one freezer, one shift — so nobody has to remember a rule about where
 something lives.
+
+For v1 (inventory only, no orders yet), the natural slice is **species or
+product category** — this fits the ledger directly. When the order/pull/label
+workflow eventually gets built, a different boundary becomes available:
+**route or driver**. The order/dispatch document is already organized that
+way, and each route reads like it's maintained by one person — so piloting
+with one route only touches what that person currently writes by hand, leaving
+every other route's workflow completely undisturbed. Worth raising with the
+owner directly when that phase starts: "let's start with Tuesday's south
+route" rather than "let's start with salmon." Noted here so the idea isn't
+lost between now and then.
 
 ### Phases
 
@@ -307,12 +361,20 @@ what was brought in from outside. Needed from the first migration.
 
 ## Open questions
 
-Tracked in `docs/reference/open-questions.md`. The blocking ones are the label
-printer's make, model, and connection; where orders live today; and whether lot
-numbers are already tracked in the sheet.
+Tracked in `docs/reference/open-questions.md`. With v1 narrowed to inventory
+only, the questions that actually block schema work now are: whether v1
+covers finfish only or also shellfish (open question 12), and whether Wanchese
+is a second physical location that needs its own on-hand scope or just cold
+storage tied to the main facility (open question 13). The label printer
+(question 1) and which sales channel orders belong to (question 11) no longer
+block anything — they matter once the order/pull/label phase starts.
 
 ## Deferred (explicitly not in v1)
 
+- **Order entry, pulls-against-orders, label printing, and the print agent.**
+  The original first loop. Still wanted — sequenced after inventory is real,
+  so it can be designed against actual data instead of assumptions. See
+  "Scope reassessment" above.
 - Offline queue on the tablet. Needed eventually; deferred until we know how bad
   the wifi actually is in the processing room.
 - Bluetooth scale integration (blocked by iOS, see above)
